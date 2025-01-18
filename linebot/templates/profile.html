@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>profile</title>
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <script>
+      function getAccessToken() {
+        liff.init({ liffId: "2006688712-oB9pnkdm" }) 
+          .then(() => {
+            if (liff.isLoggedIn()) {
+              const accessToken = liff.getAccessToken();
+              console.log("getAccessToken", accessToken);
+              if (accessToken) {
+                alert("取得accessToken");
+              } else {
+                alert("未取得accessToken");
+              }
+            } else {
+              alert("尚未登入，將跳轉至登入頁面");
+              liff.login();
+            }
+          })
+          .catch(err => {
+            console.error("LIFF 初始化失敗: " + err);
+          });
+      }
+    </script>
+  </head>
+  <body onload="getAccessToken()">
+    <div>name: {{ name }}</div>
+    <div>Line ID: {{ userID }}</div>
+    <div>Status Message: {{ statusMessage }}</div>
+    <div><img src="{{ pictureURL }}" alt="Profile Picture"></div>
+  </body>
+</html>

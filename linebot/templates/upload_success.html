@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload Success</title>
+</head>
+<body>
+    <h1>Upload Successful</h1>
+    
+    <p>Your photo has been successfully uploaded!</p>
+
+    <!-- 返回首頁按鈕 -->
+    <form action="{{ url_for('index') }}" method="get">
+        <button type="submit">Back</button>
+    </form>
+
+    <!-- 顯示上傳的圖片 -->
+    <img src="{{ image_url }}" alt="Uploaded Image" style="max-width: 100%; height: auto;">
+</body>
+</html>

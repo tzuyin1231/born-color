@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>LINE Login and Upload</title>
+	<script src="https://static.line-scdn.net/liff/edge/versions/2.15.0/sdk.js"></script>
+	<script>
+		const liffId = "{{ liff_id }}";
+        // 初始化 LIFF
+		function initializeLiff() {
+			liff.init({ liffId: liffId }, () => {  
+				// 成功初始化
+				getUserProfile();
+                getAccessToken();
+			}, (err) => {
+				console.error('LIFF 初始化失敗: ' + err);
+			});
+		}
+
+		// 取得使用者資料
+		function getUserProfile() {
+			liff.getProfile().then(profile => {
+				const userId = profile.userId;
+				const displayName = profile.displayName; // 取得顯示名稱
+				const pictureUrl = profile.pictureUrl; // 取得頭像 URL
+				document.getElementById("user_id").textContent = `User ID: ${userId}`;
+				document.getElementById("display_name").textContent = `Name: ${displayName}`; // 顯示顯示名稱
+				document.getElementById("profile_picture").src = pictureUrl; // 設定頭像圖片 URL
+				document.getElementById("hidden_user_id").value = userId; // 設定隱藏欄位的值
+			}).catch(err => {
+				console.error('取得使用者資料失敗: ' + err);
+			});
+		}
+
+        // 取得 Access Token
+        // function getAccessToken() {
+        //     try {
+        //         const accessToken = liff.getAccessToken();
+        //         console.log("getAccessToken", accessToken);
+        //         if (accessToken) {
+        //             alert("成功取得accessToken");
+        //         } else {
+        //             alert("未取得accessToken");
+        //         }
+        //     } catch (err) {
+        //         console.error('取得accessToken失敗: ' + err);
+        //     }
+        // }
+
+		window.onload = () => {
+			initializeLiff();
+		};
+	</script>
+</head>
+<body>
+    <h1>Welcome to the Website</h1>
+    <!-- 顯示 LINE 使用者頭像 -->
+	<img id="profile_picture" src="" alt="Profile Picture" style="width: 50px; height: 50px; border-radius: 50%; margin-top: 0px;" />
+    <p id="display_name">Loading ...</p> <!-- 顯示名稱 -->
+    <p id="user_id">Loading ...</p>
+	
+		
+	<!-- 上傳圖片表單 -->
+	<form action="/upload" method="post" enctype="multipart/form-data">
+		<label for="file">Select an image to upload:</label>
+		<input type="file" name="file" id="file" accept="image/*" required>
+		<input type="hidden" name="user_id" id="hidden_user_id">
+		<button type="submit">Upload</button>
+	</form>
+	
+	<!-- 登出表單 -->
+	<!-- <form action="/logout" method="post" style="margin-top: 20px;">
+		<button type="submit">Logout</button>
+	</form> -->
+</body>
+</html>
+

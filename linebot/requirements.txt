@@ -1,0 +1,9 @@
+gunicorn  == 23.0.0
+line-bot-sdk  == 3.13.0
+Flask  == 3.0.3
+audioread  == 3.0.1
+requests  == 2.32.3
+configparser  
+urllib3  == 2.2.3
+dlib 
+opencv-python == 4.6.0.66
