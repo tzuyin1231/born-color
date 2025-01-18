@@ -1,3 +1,7 @@
+# 建立圖文選單
+
+https://manager.line.biz/account/@973wluet
+
 # 與app.py同層加入config.ini:
 
 [line-bot]
