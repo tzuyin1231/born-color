@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Line Login</title>
+    <style>
+      body {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        background-color: #f9f9f9;
+      }
+      .login-button {
+        width: 300px;
+        cursor: pointer;
+        transition: transform 0.3s ease;
+      }
+      .login-button:hover {
+        transform: scale(1.1);
+      }
+    </style>
+    <script>
+      function Auth() {
+          var URL = 'https://access.line.me/oauth2/v2.1/authorize?';
+          URL += 'response_type=code';
+          URL += '&client_id={{ client_id }}';
+          URL += '&redirect_uri={{ end_point }}/line_login';
+          URL += '&scope=profile%20openid';
+          URL += '&state=secure_random_string';
+          window.location.href = URL;
+      }
+    </script>
+</head>
+<body>
+    <img 
+      src="{{ url_for('static', filename='images/btn_login_base.png') }}" 
+      class="login-button" 
+      onclick="Auth();" 
+      alt="Line Login Button">
+</body>
+</html>
