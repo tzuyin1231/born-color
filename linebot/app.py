@@ -11,7 +11,6 @@ import requests
 import json
 import configparser
 import os
-import re
 from urllib import parse
 from datetime import datetime
 
@@ -29,6 +28,7 @@ line_login_id = config.get('line-bot', 'line_login_id')
 line_login_secret = config.get('line-bot', 'line_login_secret')
 my_phone = config.get('line-bot', 'my_phone')
 line_bot_api = LineBotApi(config.get("line-bot", "channel_access_token"))
+out_api = config.get('line-bot', 'api')
 HEADER = {
     'Content-type': 'application/json',
     'Authorization': F'Bearer {config.get("line-bot", "channel_access_token")}'
@@ -88,7 +88,7 @@ def index():
 
             # 回覆image
             elif event["type"] == "message" and event["message"]["type"] == "image":
-                handle_image(event)
+                [handle_image(event)]
 
             # 回覆postback
             elif event["type"] == "postback":
@@ -98,14 +98,21 @@ def index():
                     payload["messages"] = [
                         {"type": "text", "text": "了解！歡迎使用其他功能！😊"}
                     ]
-                elif postback_data.get("action") == "View_results":
+                elif postback_data.get("action") == "View_results":                   
+                    response_message = handle_view_results(postback_data)
+                    season_name = postback_data.get("title", "未知結果")
                     payload["messages"] = [
-                        {"type": "text", "text": "以下為此次色彩鑑定"},
-                        {"type": "image", 
-                         "originalContentUrl": f"{end_point}/static/icon/color_analysis_result.png",
-                         "previewImageUrl": f"{end_point}/static/icon/color_analysis_result.png" }
+                        {"type": "text", "text": f"以下是 {season_name} 的服裝建議"},
+                        response_message  
                     ]
+                elif postback_data.get("action") == "View_more":
+                    page = postback_data.get("page", 1)                    
+                    response_message = handle_view_results(postback_data, page=page)
+                    payload["messages"] = [response_message]
+                    replyMessage(payload)
+
                 replyMessage(payload)
+
 
     return 'ok'
 
@@ -334,6 +341,29 @@ def color_analysis2():
 UPLOAD_FOLDER = 'static/uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)  
 
+# Display a loading animation
+def send_loading_animation(user_id):
+    url = "https://api.line.me/v2/bot/chat/loading/start"
+    channel_access_token = config.get("line-bot", "channel_access_token")
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {channel_access_token}",
+    }
+    
+    # 呼叫所代的參數
+    data = {
+        "chatId": user_id,
+        "loadingSeconds": 30  # 可以修改這個秒數
+    }
+
+    # 發送 POST 請求到 LINE API
+    response = requests.post(url, json=data, headers=headers)
+    
+    if response.status_code == 202:
+        print("Loading animation sent successfully")
+    else:
+        print(f"Error: {response.status_code}, {response.text}")
+
 # line_bot圖片儲存(時間+user_id) + 人臉辨識
 from templates.face import is_person_photo
 @handler.add(MessageEvent, message=ImageMessageContent)
@@ -341,7 +371,7 @@ def handle_image(event):
     try:
         # 圖片訊息 ID 以時間
         message_id = datetime.now().strftime("%Y%m%d%H%M%S%f")
-        
+
         # 獲取用戶 ID
         user_id = event["source"]["userId"]
 
@@ -352,27 +382,31 @@ def handle_image(event):
         temp_image_path = os.path.join(UPLOAD_FOLDER, f"temp_{message_id}.jpg")
         with open(temp_image_path, "wb") as temp_file:
             for chunk in image_content.iter_content():
-                temp_file.write(chunk)
+                temp_file.write(chunk)   
 
+        send_loading_animation(user_id)
         # 執行人臉檢測
         face_check_result = is_person_photo(temp_image_path)
 
-        # 根據人臉檢測結果決定後續處理
         if face_check_result == True:
-            final_image_path = os.path.join(UPLOAD_FOLDER, f"{message_id}_{user_id}.jpg")
-            os.rename(temp_image_path, final_image_path)  
-            reply_text = "照片已接收，將為您進行個人色彩分析！"
-            
-            # 回覆用戶
+            api_url = f"{out_api}/users/{user_id}/color-analysis"
+            with open(temp_image_path, 'rb') as image_file:
+                files = {"file": image_file}
+                response = requests.post(api_url, files=files)
+
+            if response.status_code == 200:
+                analysis_result = response.json().get("data", {}).get("season_type", "未知結果")
+                reply_text = f"色彩分析成功，您的色彩季型為：{analysis_result}。"
+            else:
+                reply_text = f"色彩分析服務出現問題，錯誤代碼：{response.status_code}"
+
             line_bot_api.reply_message(
                 event["replyToken"],
                 TextSendMessage(text=reply_text)
             )
         else:
-            # 刪除臨時檔案
             os.remove(temp_image_path)
 
-            # 根據檢測結果給出提示
             if face_check_result == "不是人臉或被遮擋":
                 reply_text = "照片中未檢測到人臉或臉部被遮擋，請重新上傳清晰的人臉照片。"
             elif face_check_result == "多張臉":
@@ -388,22 +422,21 @@ def handle_image(event):
             else:
                 reply_text = f"圖片檢測失敗，原因：{face_check_result}，請重新上傳照片。"
 
-            # 呼叫 color_analysis() 提示重新上傳照片
             color_analysis_message = color_analysis()
-
-            # 回覆用戶檢測失敗訊息及重新上傳提示
             line_bot_api.reply_message(
                 event["replyToken"],
                 [
                     TemplateSendMessage(
                         alt_text=color_analysis_message["altText"],
-                        template=color_analysis_message["template"],
+                        template=color_analysis_message["template"]
                     ),
                     TextSendMessage(text=reply_text)
                 ]
             )
+
     except Exception as e:
         print(f"Error while handling image: {e}")
+
 
 
 # liff or 網頁圖片儲存(時間+user_id)  + 人臉辨識
@@ -446,93 +479,49 @@ ALLOWED_EXTENSIONS = set(['pdf', 'png', 'jpg', 'jpeg', 'gif'])
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-# 資料庫獲取使用者的圖片
-def get_user_images(user_id):
-    all_files = [
-        f for f in os.listdir(UPLOAD_FOLDER)
-        if f.lower().endswith(('jpg', 'jpeg', 'png', 'gif'))
-    ]
+# 從 API 獲取使用者歷史圖片
+API_URL_HISTORY = f"{out_api}/users/{{}}/color-analysis-history"
+def get_history_from_api(user_id):
+    api_url = API_URL_HISTORY.format(user_id)
+    response = requests.get(api_url)
+    if response.status_code == 200:
+        result = response.json()
+        return result.get("data", [])
+    else:
+        return []
 
-    user_files = [
-        os.path.join(UPLOAD_FOLDER, f)
-        for f in all_files
-        if re.match(rf"^\d+_{re.escape(user_id)}\.(jpg|jpeg|png|gif)$", f, re.IGNORECASE)
-    ]
-    # 歷史紀錄則數限制
-    sorted_files = sorted(user_files, key=os.path.getmtime, reverse=True)
-    return sorted_files[:5]
-
-# 歷史紀錄Image carousel template
+# 歷史紀錄 Carousel Template
 def create_image_carousel(user_id):
-    images = get_user_images(user_id)
-    if not images:
+    images_data = get_history_from_api(user_id)
+    if not images_data:
         return {
             "type": "text",
-            "text": "您尚未上傳任何照片！"
+            "text": "您尚未有任何歷史紀錄！"
         }
-
-    data = {"action": "View_results"}
-
-    # 建立 Image Carousel Template
+    
+    images_data.sort(key=lambda x: x.get("history_time", ""), reverse=True)
+    
     carousel_columns = []
-    for img_path in images:
-        img_url = f"{end_point}/static/uploads/{os.path.basename(img_path)}"
+    for record in images_data:
+        history_time = record.get("history_time", "未知時間")
+        result = record.get("result", "未知結果")
+
+        # 假設 API 返回中不包含完整的圖片 URL，這裡需要構造圖片路徑
+        # 如果有完整圖片 URL，可以直接使用 record["image_url"]
+        img_url = f"{end_point}/static/icon/colorimage.jpg"
 
         column = {
-            "imageUrl": img_url,
-            "action": {
-                "type": "postback",
-                "label": "察看結果", 
-                "data": json.dumps(data)
-            },
-        }
-        carousel_columns.append(column)
-
-    message = {
-        "type": "template",
-        "altText": "歷史紀錄",
-        "template": {
-            "type": "image_carousel",
-            "columns": carousel_columns
-        }
-    }
-    return message
-
-
-
-# 歷史紀錄2 Carousel template
-# def create_image_carousel(user_id):
-    images = get_user_images(user_id)
-    if not images:
-        return {
-            "type": "text",
-            "text": "您尚未上傳任何照片！"
-        }
-
-    data = {"action": "View_results"}
-
-    carousel_columns = []
-    for img_path in images:
-        img_url = f"{end_point}/static/uploads/{os.path.basename(img_path)}"
-        
-        # 提取檔案名稱並截取在 "_" 符號之前的部分作為 label
-        img_name = os.path.basename(img_path)
-        label = img_name.split('_')[0]  # 取 "_" 符號之前的部分作為 label
-        # 確保 label 不超過 12 個字符
-        # if len(label) > 12:
-        #     label = label[:12]
-        # 取得圖片名稱的前 12 個字符以顯示在圖片下方
-        text = img_name[:12]  
-
-        column = {
-            "thumbnailImageUrl": img_url, 
-            "title": text, 
-            "text": text,  
+            "thumbnailImageUrl": img_url,
+            "title": result[:40],  
+            "text": history_time[:60],  
             "actions": [
                 {
                     "type": "postback",
-                    "label": "察看結果",  
-                    "data": json.dumps(data)
+                    "label": "察看結果",
+                    "data": json.dumps({
+                        "action": "View_results",  # 保持原來的 action
+                        "title": result  # 傳遞 `result` 到 `data` 中
+                    })
                 }
             ]
         }
@@ -542,18 +531,91 @@ def create_image_carousel(user_id):
         "type": "template",
         "altText": "歷史紀錄",
         "template": {
-            "type": "carousel",  
+            "type": "carousel",
             "columns": carousel_columns
         }
     }
     return message
 
+
+# 從 API 獲取衣服資訊
+API_URL_CLOTHING = f"{out_api}/clothing"
+def get_clothing_images(season_name):
+    response = requests.get(API_URL_CLOTHING)
+    if response.status_code == 200:
+        result = response.json()
+        return [
+            item for item in result.get("data", [])
+            if item.get("season_name") == season_name
+        ]
+    else:
+        return []
+    
+# 衣服Image Carousel Template
+def handle_view_results(postback_data, page=1):
+    season_name = postback_data.get("title", "Unknown")  # 獲取 season_name
+    clothing_images = get_clothing_images(season_name)
+
+    if not clothing_images:
+        return {
+            "type": "text",
+            "text": f"找不到與 {season_name} 對應的服裝建議。"
+        }
+
+    # 計算起始位置，分頁取得數據
+    start_index = (page - 1) * 5  # 每頁5個，目前頁從 (page-1)*5 開始
+    end_index = start_index + 5
+    clothing_images_page = clothing_images[start_index:end_index]
+
+    carousel_columns = []
+    for clothing in clothing_images_page:
+        # 取出衣服名稱，保留 `)` 之前的部分
+        clothes_name = clothing["clothes_name"]
+        if ")" in clothes_name:
+            clothes_name = clothes_name.split(")")[0] + ")"  # 保留 `)`，去掉其后的部分
+        else:
+            clothes_name = clothes_name
+
+        column = {
+            "imageUrl": clothing["image_url"],  # 服裝圖片 URL
+            "action": {
+                "type": "uri",  # 點擊後跳轉到商品頁
+                "label": clothes_name[:12],  # 限制服裝名稱顯示最多 12 字
+                "uri": clothing["uniqlo_url"]  # 商品頁面的 URL
+            }
+        }
+        carousel_columns.append(column)
+
+    #如果目前頁面有更多數據，則顯示「顯示更多」按鈕
+    if end_index < len(clothing_images):
+        carousel_columns.append({
+            "imageUrl": f"{end_point}/static/icon/more.jpg",
+            "action": {
+                "type": "postback",  
+                "label": "顯示更多",
+                "data": json.dumps({
+                    "action": "View_more", 
+                    "title": season_name,
+                    "page": page + 1  
+                })
+            }
+        })
+
+    return {
+        "type": "template",
+        "altText": "服裝建議",
+        "template": {
+            "type": "image_carousel",  # 使用 image_carousel 顯示圖片
+            "columns": carousel_columns  # 填充輪播圖片內容
+        }
+    }
+
+
+
 # 科普flex message
 from templates.introduce import introduce
 
 
-
-
 if __name__ == "__main__":
     app.debug = True
-    app.run(host="0.0.0.0", port=8080)
+    app.run(host="0.0.0.0", port=5000)
