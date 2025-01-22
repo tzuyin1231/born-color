@@ -7,3 +7,4 @@ configparser
 urllib3  == 2.2.3
 dlib 
 opencv-python == 4.6.0.66
+numpy == 1.24.4
