@@ -5,13 +5,14 @@ from linebot.v3.exceptions import InvalidSignatureError
 from linebot.v3.messaging import Configuration, ApiClient, MessagingApi, ReplyMessageRequest, TextMessage
 from linebot.v3.webhooks import MessageEvent, TextMessageContent, ImageMessageContent
 from linebot import LineBotApi, WebhookHandler
-from linebot.models import MessageEvent, TextSendMessage, TemplateSendMessage
+from linebot.models import MessageEvent, TextSendMessage, TemplateSendMessage, ImageSendMessage, URIAction, ButtonsTemplate,ConfirmTemplate,PostbackAction
 
 import requests
 import json
 import configparser
 import os
 from urllib import parse
+from urllib.parse import quote
 from datetime import datetime
 
 
@@ -341,7 +342,7 @@ def color_analysis2():
 UPLOAD_FOLDER = 'static/uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)  
 
-# Display a loading animation
+# 回復動畫Display a loading animation
 def send_loading_animation(user_id):
     url = "https://api.line.me/v2/bot/chat/loading/start"
     channel_access_token = config.get("line-bot", "channel_access_token")
@@ -364,7 +365,7 @@ def send_loading_animation(user_id):
     else:
         print(f"Error: {response.status_code}, {response.text}")
 
-# line_bot圖片儲存(時間+user_id) + 人臉辨識
+# line_bot鑑定(時間+user_id) + 人臉辨識
 from templates.face import is_person_photo
 @handler.add(MessageEvent, message=ImageMessageContent)
 def handle_image(event):
@@ -400,9 +401,37 @@ def handle_image(event):
             else:
                 reply_text = f"色彩分析服務出現問題，錯誤代碼：{response.status_code}"
 
+            img_url = f"{end_point}/static/icon/{quote(analysis_result)}.jpg"
+
             line_bot_api.reply_message(
                 event["replyToken"],
-                TextSendMessage(text=reply_text)
+                [
+                    TextSendMessage(text=reply_text),
+                    ImageSendMessage(
+                        original_content_url=img_url,  # 圖片的原始 URL
+                        preview_image_url=img_url     # 縮略圖 URL（可以與原始圖相同）
+                    ),
+                    TemplateSendMessage(
+                        alt_text="分析結果操作選擇",
+                        template=ConfirmTemplate(
+                            text="您可以查看服裝搭配建議或分享結果。",
+                            actions=[
+                                {
+                                    "type": "postback",
+                                    "label": "服裝搭配",
+                                    "data": json.dumps({
+                                        "action": "View_results",  
+                                        "title": analysis_result
+                                    })
+                                },
+                                URIAction(
+                                    label="分享結果",
+                                    uri=f"line://msg/text/?{quote(reply_text)}%0A{quote(img_url)}"
+                                )
+                            ]
+                        )
+                    )
+                ]
             )
         else:
             os.remove(temp_image_path)
@@ -508,7 +537,7 @@ def create_image_carousel(user_id):
 
         # 假設 API 返回中不包含完整的圖片 URL，這裡需要構造圖片路徑
         # 如果有完整圖片 URL，可以直接使用 record["image_url"]
-        img_url = f"{end_point}/static/icon/colorimage.jpg"
+        img_url = f"{end_point}/static/icon/{quote(result)}.jpg"
 
         column = {
             "thumbnailImageUrl": img_url,
@@ -517,7 +546,7 @@ def create_image_carousel(user_id):
             "actions": [
                 {
                     "type": "postback",
-                    "label": "察看結果",
+                    "label": "服裝搭配",
                     "data": json.dumps({
                         "action": "View_results",  # 保持原來的 action
                         "title": result  # 傳遞 `result` 到 `data` 中
