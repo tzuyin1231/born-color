@@ -5,22 +5,17 @@ FROM python:3.9-slim
 WORKDIR /app
 
 # 安裝必要的系統工具與依賴
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     cmake \
-    gfortran \
-    git \
     libatlas-base-dev \
-    libboost-all-dev \
-    libeigen3-dev \
     libssl-dev \
-    libopenblas-dev \
     libgl1-mesa-glx \
     libglib2.0-0 \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# 將當前目錄的所有文件複製到容器中的 /app 目錄
+# 複製項目文件到容器中
 COPY . .
 
 # 安裝 Python 所需的依賴
@@ -34,3 +29,4 @@ EXPOSE 8080
 
 # 啟動 Flask 應用程式
 CMD ["python", "app.py"]
+
