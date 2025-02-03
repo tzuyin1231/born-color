@@ -6,15 +6,16 @@
 - Gemini API 金鑰
 
 ## 主要功能(webcrawler_env.py):
-- 1.從uniqlo網頁抓取衣服資料(名稱、種類、顏色、商品頁面等)
-- 2.透過Gemini AI解析衣服的四季八型分類
-- 3.將衣服資料與四季八型分類上傳至google firestroe
+1. 從uniqlo網頁抓取衣服資料(名稱、種類、顏色、商品頁面等)
+2. 透過Gemini AI解析衣服的四季八型分類
+3. 將衣服資料與四季八型分類上傳至google firestroe
 
 ## 安裝步驟
-- 1.安裝必要套件
-- pip install -r requirements.txt
+1. 安裝必要套件
+   ```bash
+   pip install -r requirements.txt
 
-- 2.設定環境變數:建置.env並設定 Gemini API 金鑰
+2. 設定環境變數:建置.env並設定 Gemini API 金鑰
 
 ## 功能說明
 - 衣服商品資料抓取
