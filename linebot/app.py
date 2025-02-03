@@ -433,6 +433,7 @@ def handle_image(event):
                     )
                 ]
             )
+            os.remove(temp_image_path)
         else:
             os.remove(temp_image_path)
 
