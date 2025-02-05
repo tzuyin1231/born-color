@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <title>色彩分析分享</title>
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <script>
+        const liffId = "2006688712-gn6dRnEq"; // 替換為你的 LIFF ID
+        
+        document.addEventListener("DOMContentLoaded", function() {
+            liff.init({ liffId })
+                .then(() => {
+                    if (!liff.isLoggedIn()) {
+                        liff.login();
+                        return;
+                    }
+
+                    // 解析 URL 參數
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const analysisResult = urlParams.get("result") || "未知結果";
+                    const imgUrl = decodeURIComponent(decodeURIComponent(urlParams.get("img_url") || ""));
+
+
+                    // 顯示分析結果
+                    document.getElementById("result-text").innerText = `您的色彩季型為：${analysisResult}`;
+                    if (imgUrl) {
+                        console.log("圖片 URL:", imgUrl);
+                        document.getElementById("result-img").src = imgUrl;
+                    }
+                })
+                .catch(err => console.error("LIFF 初始化失敗", err));
+        });
+
+        function shareResult() {
+            if (liff.isApiAvailable('shareTargetPicker')) {
+                const analysisResult = document.getElementById("result-text").innerText.replace("您的色彩季型為：", "");
+                const imgUrl = document.getElementById("result-img").src;
+                const testLink = "https://line.me/R/ti/p/@973wluet";
+
+                liff.shareTargetPicker([
+                    {
+                        type: "text",
+                        text: `來看看我的色彩分析，我的色彩季型為：${analysisResult}。`
+                    },
+                    {
+                        type: "image",
+                        originalContentUrl: imgUrl,
+                        previewImageUrl: imgUrl
+                    },
+                    {
+                        type: "text",
+                        text: `一起來測試 ${testLink}`
+                    }
+                ])
+                .then(res => {
+                    if (res) {
+                        alert("分享成功！");
+                    } else {
+                        alert("分享取消");
+                    }
+                })
+                .catch(err => console.error("分享失敗", err));
+            } else {
+                alert("無法使用 LINE 分享功能，請手動複製連結！");
+            }
+        }
+    </script>
+</head>
+<body>
+    <h2>色彩分析結果</h2>
+    <p id="result-text">載入中...</p>
+    <img id="result-img" src="" alt="色彩分析結果" 
+     style="max-width: 80%; height: auto;" 
+     onerror="console.error('圖片載入失敗:', this.src); this.alt='圖片載入失敗！';">
+    <button onclick="shareResult()">分享結果</button>
+</body>
+</html>

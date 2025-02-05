@@ -5,7 +5,7 @@ from linebot.v3.exceptions import InvalidSignatureError
 from linebot.v3.messaging import Configuration, ApiClient, MessagingApi, ReplyMessageRequest, TextMessage
 from linebot.v3.webhooks import MessageEvent, TextMessageContent, ImageMessageContent
 from linebot import LineBotApi, WebhookHandler
-from linebot.models import MessageEvent, TextSendMessage, TemplateSendMessage, ImageSendMessage, URIAction, ButtonsTemplate,ConfirmTemplate,PostbackAction
+from linebot.models import MessageEvent, TextSendMessage, TemplateSendMessage, ImageSendMessage, URIAction, ButtonsTemplate,ConfirmTemplate,PostbackAction,FlexSendMessage
 
 import requests
 import json
@@ -401,38 +401,69 @@ def handle_image(event):
             else:
                 reply_text = f"色彩分析服務出現問題，錯誤代碼：{response.status_code}"
 
-            img_url = f"{end_point}/static/icon/{quote(analysis_result)}.jpg"
+
+
+            img_url = f"{end_point}/static/icon/{quote(analysis_result, safe='')}.jpg"
+            liff_url = f"https://liff.line.me/2006688712-gn6dRnEq?result={quote(analysis_result)}&img_url={img_url}"
+
+            share_text = f"來看看我的色彩分析，我的色彩季型為：{analysis_result}。"
+
+
+            flex_message = FlexSendMessage(
+                alt_text="分析結果操作選擇",
+                contents={
+                    "type": "bubble",
+                    "hero": {
+                        "type": "image",
+                        "url": img_url,
+                        "size": "full",
+                        "aspectRatio": "20:13",
+                        "aspectMode": "cover"
+                    },
+                    "body": {
+                        "type": "box",
+                        "layout": "vertical",
+                        "contents": [
+                            {"type": "text", "text": "色彩分析成功，您的色彩季型為：", "weight": "bold", "size": "xl"},
+                            {"type": "text", "text": analysis_result, "wrap": True, "margin": "md"}
+                        ]
+                    },
+                    "footer": {
+                        "type": "box",
+                        "layout": "horizontal",
+                        "spacing": "sm",
+                        "contents": [
+                            {
+                                "type": "button",
+                                "action": {
+                                    "type": "postback",
+                                    "label": "服裝搭配",
+                                    "data": json.dumps({"action": "View_results", "title": analysis_result})
+                                },
+                                "style": "primary"
+                            },
+                            {
+                                "type": "button",
+                                "action": {
+                                    "type": "uri",
+                                    "label": "分享結果",
+                                    "uri": liff_url
+                                },
+                                "style": "secondary"
+                            }
+                        ]
+                    }
+                }
+            )
+
 
             line_bot_api.reply_message(
                 event["replyToken"],
                 [
-                    TextSendMessage(text=reply_text),
-                    ImageSendMessage(
-                        original_content_url=img_url,  # 圖片的原始 URL
-                        preview_image_url=img_url     # 縮略圖 URL（可以與原始圖相同）
-                    ),
-                    TemplateSendMessage(
-                        alt_text="分析結果操作選擇",
-                        template=ConfirmTemplate(
-                            text="您可以查看服裝搭配建議或分享結果。",
-                            actions=[
-                                {
-                                    "type": "postback",
-                                    "label": "服裝搭配",
-                                    "data": json.dumps({
-                                        "action": "View_results",  
-                                        "title": analysis_result
-                                    })
-                                },
-                                URIAction(
-                                    label="分享結果",
-                                    uri=f"line://msg/text/?{quote(reply_text)}%0A{quote(img_url)}"
-                                )
-                            ]
-                        )
-                    )
+                    flex_message
                 ]
             )
+
             os.remove(temp_image_path)
         else:
             os.remove(temp_image_path)
@@ -466,6 +497,10 @@ def handle_image(event):
 
     except Exception as e:
         print(f"Error while handling image: {e}")
+
+@app.route("/liff/share.html")
+def share_page():
+    return render_template("share.html", liff_id=liff_id)
 
 
 
@@ -648,4 +683,4 @@ from templates.introduce import introduce
 
 if __name__ == "__main__":
     app.debug = True
-    app.run(host="0.0.0.0", port=8080)
+    app.run(host="0.0.0.0", port=5000)
