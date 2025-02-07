@@ -551,6 +551,7 @@ def handle_image(event):
                             "url": img_url,
                             "size": "full",
                             "aspectRatio": "20:13",
+                            "backgroundColor": backgroundColor,
                             "aspectMode": "cover"
                         },
                         "body": {
