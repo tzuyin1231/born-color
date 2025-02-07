@@ -1,4 +1,4 @@
-
+backgroundColor = "#faf3f3"
 
 def introduce(end_point):
     return {
@@ -10,12 +10,13 @@ def introduce(end_point):
                 "type": "image",
                 "url": f"{end_point}/static/icon/colorimage3.jpg",  # 替換為產品圖片的 URL
                 "size": "full",
-                "aspectRatio": "20:13",
+                "aspectRatio": "20:9",
                 "aspectMode": "cover"
             },
             "body": {
                 "type": "box",
                 "layout": "vertical",
+                "backgroundColor": backgroundColor,
                 "contents": [
                     {
                         "type": "text",
@@ -41,6 +42,7 @@ def introduce(end_point):
                         "type": "box",
                         "layout": "vertical",
                         "spacing": "sm",
+                        "backgroundColor": backgroundColor,
                         "contents": [
                             {
                                 "type": "text",
@@ -137,21 +139,6 @@ def introduce(end_point):
                     }
                 ]
             }
-            ,
-            "footer": {
-                "type": "box",
-                "layout": "vertical",
-                "contents": [
-                    {
-                        "type": "button",
-                        "style": "primary",
-                        "action": {
-                            "type": "uri",
-                            "label": "了解更多",
-                            "uri": "https://www.urban-research.tw/special/230214-personal-color/"  # 替換為更多資訊的連結
-                        }
-                    }
-                ]
-            }
+            
         }
     }
