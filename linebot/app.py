@@ -36,6 +36,7 @@ HEADER = {
 }
 app.secret_key = config['line-bot']['secret_key']
 liff_id = config['line-bot']['liff_id']
+liff_id_share = config['line-bot']['liff_id_share']
 
 @app.route("/", methods=['POST', 'GET'])
 def index():
@@ -68,8 +69,8 @@ def index():
                     payload["messages"] = [Member_Login()]
                 elif text == "色彩鑑定":
                     payload["messages"] = [color_analysis()]
-                elif text == "照片範例":
-                    payload["messages"] = [HeadshotsExamples(), color_analysis2()]
+                elif text == "照片規範":
+                    payload["messages"] = [HeadshotsExamples()]
                 elif text == "查看歷史紀錄":
                     user_id = event["source"].get("userId")  # 防止 KeyError
                     if user_id:
@@ -110,7 +111,9 @@ def index():
                     page = postback_data.get("page", 1)                    
                     response_message = handle_view_results(postback_data, page=page)
                     payload["messages"] = [response_message]
-                    replyMessage(payload)
+                elif postback_data.get("action") == "start_test":
+                    response_message = start_test_color_analysis(postback_data)
+                    payload["messages"] = [response_message]
 
                 replyMessage(payload)
 
@@ -270,29 +273,195 @@ def Member_Login():
     }
     return message
 
-# 色彩分析Buttons template
+backgroundColor = "#faf3f3"
+buttonColor = "#ff9cc3"
+# 色彩分析Buttons template -> flex
 def color_analysis():
     message = {
-        "type": "template",
+        "type": "flex",
         "altText": "請上傳大頭照進行色彩鑑定",
-        "template": {
-            "type": "buttons",
-            "thumbnailImageUrl": f"{end_point}/static/icon/color_analysis.png",
-            "title": "色彩鑑定",
-            "text": "請上傳您的大頭照",
-            "actions": [
+        "backgroundColor": backgroundColor,
+        "contents": {
+            "type": "bubble",
+            "size": "hecto",
+            "hero": {
+                "type": "image",
+                "url": f"{end_point}/static/icon/color_analysis.png",
+                "size": "full",
+                "aspectRatio": "20:15",
+                "backgroundColor":  backgroundColor,
+                "aspectMode": "cover"
+            },
+            "body": {
+                "type": "box",
+                "layout": "vertical",
+                "backgroundColor": backgroundColor,
+                "contents": [
+                    {
+                        "type": "text",
+                        "text": "色彩鑑定",
+                        "weight": "bold",
+                        "size": "xl",
+                        "align": "start"
+                    },
+                    {
+                        "type": "text",
+                        "text": "請上傳您的大頭照",
+                        "size": "md",
+                        "wrap": True,
+                        "align": "start"
+                    }
+                ]
+            },
+            "footer": {
+                "type": "box",
+                "layout": "vertical",
+                "backgroundColor": backgroundColor,
+                "spacing": "sm",
+                "contents": [
+                    {
+                        "type": "button",
+                        "action": {
+                            "type": "postback",
+                            "label": "測驗開始",
+                            "data": json.dumps({"action": "start_test"})
+                        },
+                        "style": "primary",
+                        "height": "sm",
+                        "color": buttonColor
+                        
+                    },
+                    {
+                        "type": "button",
+                        "action": {
+                            "type": "message",
+                            "label": "查看規範",
+                            "text": "照片規範"
+                        },
+                        "style": "primary",
+                        "height": "sm",
+                        "color": buttonColor
+                    }
+                ]
+            }
+        }
+    }
+    return message
+
+# 大頭照規範
+def HeadshotsExamples():
+    message = {
+        "type": "flex",
+        "altText": "Headshots Example",
+        "backgroundColor": backgroundColor,
+        "contents": {
+            "type": "bubble",
+            "size": "kilo",
+            "hero": {
+                "type": "image",
+                "url": f"{end_point}/static/icon/Headshots_Examples.jpg",
+                "size": "full",
+                "aspectRatio": "20:20",
+                "aspectMode": "cover",
+                "action": {
+                    "type": "uri",
+                    "uri": f"{end_point}/static/icon/Headshots_Examples.jpg"
+                }
+            },
+            "body": {
+                "type": "box",
+                "layout": "vertical",
+                "backgroundColor": backgroundColor,
+                "spacing": "xl",
+                "contents": [
+                    {
+                        "type": "text",
+                        "text": "照明及環境因素的變化，測驗結果可能會有所不同",
+                        "wrap": True,
+                        "size": "lg",
+                        "weight": "bold"
+                    },
+                    {
+                        "type": "text",
+                        "text": "請在自然光或日光燈等光線明亮的環境下拍攝正臉照（不要使用白熾燈）。",
+                        "wrap": True,
+                        "color": "#666666",
+                        "size": "xs"
+                    },
+                    {
+                        "type": "text",
+                        "text": "建議您在拍照時取下彩色隱形眼鏡。請在素顏的狀態下拍照，盡量不要塗口紅（如不方便卸粧，也可在淡粧的狀態下拍照）。",
+                        "wrap": True,
+                        "color": "#666666",
+                        "size": "xs"
+                    },
+                    {
+                        "type": "text",
+                        "text": "如測試人擁有多個同等程度的個人色彩種類要素，診斷結果可能會出現多個類型。",
+                        "wrap": True,
+                        "color": "#666666",
+                        "size": "xs"
+                    },
+                    {
+                        "type": "image",
+                        "url": f"{end_point}/static/icon/color_light.jpg",
+                        "size": "full",
+                        "aspectRatio": "20:20",
+                        "aspectMode": "cover"
+                    },
+                    {
+                        "type": "text",
+                        "text": "建議在5000~6000k色溫下拍攝",
+                        "wrap": True,
+                        "color": "#666666",
+                        "size": "xs"
+                    }
+                ]
+            },
+            "footer": {
+                "type": "box",
+                "layout": "horizontal",
+                "spacing": "md",
+                "backgroundColor": backgroundColor,
+                "contents": [
+                    {
+                        "type": "button",
+                        "action": {
+                            "type": "postback",
+                            "label": "測驗開始",
+                            "data": json.dumps({"action": "start_test"})
+                        },
+                        "style": "primary",
+                        "height": "sm",
+                        "color": buttonColor
+                        
+                    }
+                ]
+            }
+        }
+    }
+    return message
+
+# 上傳方式Quick Reply
+def start_test_color_analysis(postback_data):
+    message = {
+        "type": "text",
+        "text": "請選擇上傳方式",
+        "quickReply": {
+            "items": [
                 {
-                    "type": "cameraRoll",
-                    "label": "從相簿上選擇"
+                    "type": "action",
+                    "action": {
+                        "type": "cameraRoll",
+                        "label": "從相簿上選擇"
+                    }
                 },
                 {
-                    "type": "camera",
-                    "label": "拍攝照片"
-                },
-                {
-                    "type": "message",
-                    "label": "查看範例",
-                    "text": "照片範例"
+                    "type": "action",
+                    "action": {
+                        "type": "camera",
+                        "label": "拍攝照片"
+                    }
                 }
             ]
         }
@@ -300,49 +469,12 @@ def color_analysis():
     return message
 
 
-# 大頭照範例
-def HeadshotsExamples(originalContentUrl=F"{end_point}/static/icon/Headshots_Examples.jpg"):
-    return Headshots(originalContentUrl)
-
-def Headshots(originalContentUrl):
-    message = {
-        "type": "image",
-        "originalContentUrl": originalContentUrl,
-        "previewImageUrl": originalContentUrl 
-        }
-    return message
-
-# 色彩分析2
-def color_analysis2():
-    message = {
-        "type": "template",
-        "altText": "請上傳大頭照進行色彩鑑定",
-        "template": {
-            "type": "buttons",
-            "thumbnailImageUrl": f"{end_point}/static/icon/color_analysis.png",
-            "title": "色彩鑑定",
-            "text": "請上傳您的大頭照",
-            "actions": [
-                {
-                    "type": "cameraRoll",
-                    "label": "從相簿上選擇"
-                },
-                {
-                    "type": "camera",
-                    "label": "拍攝照片"
-                },
-
-            ]
-        }
-    }
-    return message
-
 
 # 確保儲存目錄存在
 UPLOAD_FOLDER = 'static/uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)  
 
-# 回復動畫Display a loading animation
+# 回覆動畫Display a loading animation
 def send_loading_animation(user_id):
     url = "https://api.line.me/v2/bot/chat/loading/start"
     channel_access_token = config.get("line-bot", "channel_access_token")
@@ -399,71 +531,78 @@ def handle_image(event):
                 analysis_result = response.json().get("data", {}).get("season_type", "未知結果")
                 reply_text = f"色彩分析成功，您的色彩季型為：{analysis_result}。"
             else:
+                analysis_result = "請重新上傳，可能是伺服器冷啟動導致的超時"
                 reply_text = f"色彩分析服務出現問題，錯誤代碼：{response.status_code}"
 
 
 
-            img_url = f"{end_point}/static/icon/{quote(analysis_result, safe='')}.jpg"
-            liff_url = f"https://liff.line.me/2006688712-gn6dRnEq?result={quote(analysis_result)}&img_url={img_url}"
+            img_url = f"{end_point}/static/icon/{quote(analysis_result, safe='')}.png"
+            liff_url = f"https://liff.line.me/{liff_id_share}?result={quote(analysis_result)}&img_url={img_url}"
 
-            share_text = f"來看看我的色彩分析，我的色彩季型為：{analysis_result}。"
+            button_color, season_name = result_transform(analysis_result)
 
-
-            flex_message = FlexSendMessage(
-                alt_text="分析結果操作選擇",
-                contents={
-                    "type": "bubble",
-                    "hero": {
-                        "type": "image",
-                        "url": img_url,
-                        "size": "full",
-                        "aspectRatio": "20:13",
-                        "aspectMode": "cover"
-                    },
-                    "body": {
-                        "type": "box",
-                        "layout": "vertical",
-                        "contents": [
-                            {"type": "text", "text": "色彩分析成功，您的色彩季型為：", "weight": "bold", "size": "xl"},
-                            {"type": "text", "text": analysis_result, "wrap": True, "margin": "md"}
-                        ]
-                    },
-                    "footer": {
-                        "type": "box",
-                        "layout": "horizontal",
-                        "spacing": "sm",
-                        "contents": [
-                            {
-                                "type": "button",
-                                "action": {
-                                    "type": "postback",
-                                    "label": "服裝搭配",
-                                    "data": json.dumps({"action": "View_results", "title": analysis_result})
+            if season_name != "未知類型":
+                flex_message = FlexSendMessage(
+                    alt_text="分析結果操作選擇",
+                    contents={
+                        "type": "bubble",
+                        "hero": {
+                            "type": "image",
+                            "url": img_url,
+                            "size": "full",
+                            "aspectRatio": "20:13",
+                            "aspectMode": "cover"
+                        },
+                        "body": {
+                            "type": "box",
+                            "layout": "vertical",
+                            "backgroundColor": backgroundColor,
+                            "contents": [
+                                {"type": "text", "text": "色彩分析成功，您的色彩季型為：", "weight": "bold", "size": "md"},
+                                {"type": "text", "text": f"{season_name}\n{analysis_result}", "wrap": True, "margin": "md", "align": "center"}
+                            ]
+                        },
+                        "footer": {
+                            "type": "box",
+                            "layout": "horizontal",
+                            "spacing": "sm",
+                            "backgroundColor": backgroundColor,
+                            "contents": [
+                                {
+                                    "type": "button",
+                                    "action": {
+                                        "type": "postback",
+                                        "label": "服裝搭配",
+                                        "data": json.dumps({"action": "View_results", "title": analysis_result})
+                                    },
+                                    "style": "primary",
+                                    "color": button_color
                                 },
-                                "style": "primary"
-                            },
-                            {
-                                "type": "button",
-                                "action": {
-                                    "type": "uri",
-                                    "label": "分享結果",
-                                    "uri": liff_url
-                                },
-                                "style": "secondary"
-                            }
-                        ]
+                                {
+                                    "type": "button",
+                                    "action": {
+                                        "type": "uri",
+                                        "label": "分享結果",
+                                        "uri": liff_url
+                                    },
+                                    "style": "primary",
+                                    "color": button_color if button_color.startswith("#") else "#000000"
+                                }
+                            ]
+                        }
                     }
-                }
-            )
+                )
 
-
-            line_bot_api.reply_message(
-                event["replyToken"],
-                [
-                    flex_message
-                ]
-            )
-
+                line_bot_api.reply_message(
+                    event["replyToken"],
+                    [flex_message]
+                )
+            else:
+                # 回覆使用者超時的情況
+                line_bot_api.reply_message(
+                    event["replyToken"],
+                    TextSendMessage(text="分析失敗，請再試一次。")
+                )
             os.remove(temp_image_path)
         else:
             os.remove(temp_image_path)
@@ -487,9 +626,9 @@ def handle_image(event):
             line_bot_api.reply_message(
                 event["replyToken"],
                 [
-                    TemplateSendMessage(
+                    FlexSendMessage(
                         alt_text=color_analysis_message["altText"],
-                        template=color_analysis_message["template"]
+                        contents=color_analysis_message["contents"]
                     ),
                     TextSendMessage(text=reply_text)
                 ]
@@ -497,11 +636,28 @@ def handle_image(event):
 
     except Exception as e:
         print(f"Error while handling image: {e}")
+    finally:
+        # 確保不論成功或失敗都刪除暫存圖片
+        if os.path.exists(temp_image_path):
+            os.remove(temp_image_path)
 
 @app.route("/liff/share.html")
 def share_page():
-    return render_template("share.html", liff_id=liff_id)
+    return render_template("share.html", liff_id=liff_id_share)
 
+# 季節名稱、顏色轉換
+def result_transform(analysis_result):
+    season_mapping = {
+        "Spring Light": ("#eecfd2", "淨春型"),
+        "Spring Bright": ("#d6223c", "淺春型"),
+        "Summer Light": ("#e8aac3", "淺夏型"),
+        "Summer Mute": ("#f0cada", "冷夏型"),
+        "Autumn Deep": ("#9d1130", "暖秋型"),
+        "Autumn Mute": ("#e79e98", "柔秋型"),
+        "Winter Bright": ("#c23b71", "淨冬型"),
+        "Winter Dark": ("#7e4257", "深冬型")
+    }
+    return season_mapping.get(analysis_result, ("#000000", "未知類型"))
 
 
 # liff or 網頁圖片儲存(時間+user_id)  + 人臉辨識
@@ -566,42 +722,78 @@ def create_image_carousel(user_id):
     
     images_data.sort(key=lambda x: x.get("history_time", ""), reverse=True)
     
-    carousel_columns = []
+    contents = []
     for record in images_data:
         history_time = record.get("history_time", "未知時間")
         result = record.get("result", "未知結果")
-
-        # 假設 API 返回中不包含完整的圖片 URL，這裡需要構造圖片路徑
-        # 如果有完整圖片 URL，可以直接使用 record["image_url"]
-        img_url = f"{end_point}/static/icon/{quote(result)}.jpg"
-
-        column = {
-            "thumbnailImageUrl": img_url,
-            "title": result[:40],  
-            "text": history_time[:60],  
-            "actions": [
-                {
-                    "type": "postback",
-                    "label": "服裝搭配",
-                    "data": json.dumps({
-                        "action": "View_results",  # 保持原來的 action
-                        "title": result  # 傳遞 `result` 到 `data` 中
-                    })
-                }
-            ]
+        img_url = f"{end_point}/static/icon/{quote(result)}.png"
+        
+        button_color, season_name = result_transform(result)
+        
+        bubble = {
+            "type": "bubble",
+            "hero": {
+                "type": "image",
+                "url": img_url,
+                "size": "full",
+                "aspectRatio": "20:13",
+                "backgroundColor": backgroundColor,
+                "aspectMode": "cover"
+            },
+            "body": {
+                "type": "box",
+                "layout": "vertical",
+                "backgroundColor": backgroundColor,
+                "contents": [
+                    {
+                        "type": "text",
+                        "text": f"{season_name} {result}",
+                        "weight": "bold",
+                        "size": "xl",
+                        "wrap": True
+                    },
+                    {
+                        "type": "text",
+                        "text": history_time,
+                        "size": "sm",
+                        "color": "#666666",
+                        "wrap": True
+                    }
+                ]
+            },
+            "footer": {
+                "type": "box",
+                "layout": "vertical",
+                "backgroundColor": backgroundColor,
+                "spacing": "sm",
+                "contents": [
+                    {
+                        "type": "button",
+                        "style": "primary",
+                        "color": button_color,
+                        "action": {
+                            "type": "postback",
+                            "label": "服裝搭配",
+                            "data": json.dumps({
+                                "action": "View_results",
+                                "title": result
+                            })
+                        }
+                    }
+                ]
+            }
         }
-        carousel_columns.append(column)
-
+        contents.append(bubble)
+    
     message = {
-        "type": "template",
+        "type": "flex",
         "altText": "歷史紀錄",
-        "template": {
+        "contents": {
             "type": "carousel",
-            "columns": carousel_columns
+            "contents": contents
         }
     }
     return message
-
 
 # 從 API 獲取衣服資訊
 API_URL_CLOTHING = f"{out_api}/clothing"
@@ -627,55 +819,133 @@ def handle_view_results(postback_data, page=1):
             "text": f"找不到與 {season_name} 對應的服裝建議。"
         }
 
-    # 計算起始位置，分頁取得數據
-    start_index = (page - 1) * 5  # 每頁5個，目前頁從 (page-1)*5 開始
+    season_color_back, season_type_name = result_transform(season_name)
+    
+
+    start_index = (page - 1) * 5  # 每頁5個
     end_index = start_index + 5
     clothing_images_page = clothing_images[start_index:end_index]
 
-    carousel_columns = []
+    carousel_contents = []
     for clothing in clothing_images_page:
-        # 取出衣服名稱，保留 `)` 之前的部分
-        clothes_name = clothing["clothes_name"]
-        if ")" in clothes_name:
-            clothes_name = clothes_name.split(")")[0] + ")"  # 保留 `)`，去掉其后的部分
-        else:
-            clothes_name = clothes_name
-
-        column = {
-            "imageUrl": clothing["image_url"],  # 服裝圖片 URL
-            "action": {
-                "type": "uri",  # 點擊後跳轉到商品頁
-                "label": clothes_name[:12],  # 限制服裝名稱顯示最多 12 字
-                "uri": clothing["uniqlo_url"]  # 商品頁面的 URL
+        clothes_name = clothing["clothes_name"].split(")")[0] + ")" if ")" in clothing["clothes_name"] else clothing["clothes_name"]
+        
+        bubble = {
+            "type": "bubble",
+            "body": {
+                "type": "box",
+                "layout": "vertical",
+                "contents": [
+                    {"type": "image", 
+                     "url": clothing["image_url"], 
+                     "size": "full", 
+                     "aspectMode": "cover", 
+                     "aspectRatio": "2:3", 
+                     "gravity": "top"
+                    },
+                    {
+                        "type": "box",
+                        "layout": "vertical",
+                        "contents": [
+                            {"type": "text", 
+                             "text": clothes_name, 
+                             "size": "xl", 
+                             "color": "#ffffff", 
+                             "weight": "bold"
+                            },
+                            {
+                                "type": "box",
+                                "layout": "vertical",
+                                "contents": [
+                                    {"type": "filler"},
+                                    {
+                                        "type": "box",
+                                        "layout": "baseline",
+                                        "contents": [
+                                            {"type": "filler"},
+                                            {"type": "icon", 
+                                             "url": "https://developers-resource.landpress.line.me/fx/clip/clip14.png"
+                                            },
+                                            {"type": "text", 
+                                             "text": "Go to buy", 
+                                             "color": "#ffffff", 
+                                             "flex": 0, 
+                                             "offsetTop": "-2px"
+                                            },
+                                            {"type": "filler"}
+                                        ],
+                                        "spacing": "sm"
+                                    },
+                                    {"type": "filler"}
+                                ],
+                                "borderWidth": "1px",
+                                "cornerRadius": "4px",
+                                "spacing": "sm",
+                                "borderColor": "#ffffff",
+                                "margin": "xxl",
+                                "height": "40px",
+                                "action": {"type": "uri", 
+                                           "label": "action", 
+                                           "uri": clothing["uniqlo_url"]
+                                        }
+                            }
+                        ],
+                        "position": "absolute",
+                        "offsetBottom": "0px",
+                        "offsetStart": "0px",
+                        "offsetEnd": "0px",
+                        "backgroundColor": f"{season_color_back}cc",
+                        "paddingAll": "20px"
+                    }
+                ],
+                "paddingAll": "0px"
             }
         }
-        carousel_columns.append(column)
-
-    #如果目前頁面有更多數據，則顯示「顯示更多」按鈕
+        carousel_contents.append(bubble)
+    
     if end_index < len(clothing_images):
-        carousel_columns.append({
-            "imageUrl": f"{end_point}/static/icon/more.jpg",
-            "action": {
-                "type": "postback",  
-                "label": "顯示更多",
-                "data": json.dumps({
-                    "action": "View_more", 
-                    "title": season_name,
-                    "page": page + 1  
-                })
+        carousel_contents.append({
+            "type": "bubble",
+            "body": {
+                "type": "box",
+                "layout": "vertical",
+                "paddingAll": "0px",
+                "justifyContent": "center",  
+                "alignItems": "center",  
+                "action": {
+                    "type": "postback",
+                    "label": "顯示更多",
+                    "data": json.dumps({"action": "View_more", "title": season_name, "page": page + 1})
+                },
+                "contents": [
+                    {"type": "image", 
+                     "url": f"{end_point}/static/icon/more.png", 
+                     "size": "full", 
+                     "aspectMode": "cover", 
+                     "aspectRatio": "1:1", 
+                     "gravity": "top"
+                    },
+                    {
+                        "type": "text",  # 添加顯示更多的純文字
+                        "text": "顯示更多",  
+                        "size": "lg",  # 根據需要調整大小
+                        "color": season_color_back,  # 文字顏色
+                        "align": "center",  # 文字居中對齊
+                        "weight": "bold",  # 加粗字體
+                        "margin": "md"  # 可以調整文字的外邊距
+                    }
+                ]
             }
         })
-
+    
     return {
-        "type": "template",
+        "type": "flex",
         "altText": "服裝建議",
-        "template": {
-            "type": "image_carousel",  # 使用 image_carousel 顯示圖片
-            "columns": carousel_columns  # 填充輪播圖片內容
+        "contents": {
+            "type": "carousel",
+            "contents": carousel_contents
         }
     }
-
-
 
 # 科普flex message
 from templates.introduce import introduce
