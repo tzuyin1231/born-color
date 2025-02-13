@@ -65,9 +65,7 @@ def index():
             if event["type"] == "message" and event["message"]["type"] == "text":
                 text = event["message"]["text"]
 
-                if text == "會員登入":
-                    payload["messages"] = [Member_Login()]
-                elif text == "色彩鑑定":
+                if text == "色彩鑑定":
                     payload["messages"] = [color_analysis()]
                 elif text == "照片規範":
                     payload["messages"] = [HeadshotsExamples()]
@@ -223,55 +221,6 @@ def line_login():
     else:
         # 未登入且未收到授權參數，顯示登入頁面
         return render_template('login.html', client_id=line_login_id, end_point=end_point)
-
-
-@app.route('/logout', methods=['POST'])
-def logout():
-    session.clear()
-    return redirect('/line_login')
-
-
-# 會員登入Buttons template
-def Member_Login():
-    LINE_LOGIN_URL = f"{end_point}/line_login"
-    CLIENT_ID = line_login_id  
-    REDIRECT_URI = f"{end_point}/callback"
-    STATE = "random_generated_state"  
-    SCOPE = "profile openid email"  
-
-    login_url = (
-        f"{LINE_LOGIN_URL}"
-        f"?response_type=code"
-        f"&client_id={CLIENT_ID}"
-        f"&redirect_uri={parse.quote(REDIRECT_URI)}"
-        f"&state={STATE}"
-        f"&scope={parse.quote(SCOPE)}"
-    )
-
-    data = {"action": "no_help"}
-    message = {
-        "type": "template",
-        "altText": "Member_Login",
-        "template": {
-            "type": "buttons",
-            "thumbnailImageUrl": f"{end_point}/static/icon/logged_in__307442.png",
-            "title": "會員登入",
-            "text": "請選擇",
-            "actions": [
-                {
-                    "type": "uri",
-                    "label": "使用line帳號登入",
-                    "uri": login_url
-                },
-                {
-                    "type": "postback",
-                    "label": "不了，謝謝",
-                    "data": json.dumps(data)
-                }
-            ]
-        }
-    }
-    return message
 
 backgroundColor = "#faf3f3"
 buttonColor = "#ff9cc3"
@@ -468,8 +417,6 @@ def start_test_color_analysis(postback_data):
     }
     return message
 
-
-
 # 確保儲存目錄存在
 UPLOAD_FOLDER = 'static/uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)  
@@ -649,52 +596,17 @@ def share_page():
 # 季節名稱、顏色轉換
 def result_transform(analysis_result):
     season_mapping = {
-        "Spring Light": ("#eecfd2", "淨春型"),
-        "Spring Bright": ("#d6223c", "淺春型"),
+        "Spring Light": ("#eecfd2", "淺春型"),
+        "Spring Bright": ("#d6223c", "亮春型"),
         "Summer Light": ("#e8aac3", "淺夏型"),
-        "Summer Mute": ("#f0cada", "冷夏型"),
-        "Autumn Deep": ("#9d1130", "暖秋型"),
+        "Summer Mute": ("#f0cada", "柔夏型"),
+        "Autumn Deep": ("#9d1130", "深秋型"),
         "Autumn Mute": ("#e79e98", "柔秋型"),
-        "Winter Bright": ("#c23b71", "淨冬型"),
+        "Winter Bright": ("#c23b71", "亮冬型"),
         "Winter Dark": ("#7e4257", "深冬型")
     }
     return season_mapping.get(analysis_result, ("#000000", "未知類型"))
 
-
-# liff or 網頁圖片儲存(時間+user_id)  + 人臉辨識
-app.config[UPLOAD_FOLDER] = UPLOAD_FOLDER
-@app.route('/upload', methods=['POST'])
-def upload_image():
-    user_id = request.form.get('user_id')
-    if not user_id:
-        return 'User ID is missing', 400
-
-    file = request.files.get('file')
-    if not file or file.filename == '':
-        return 'No file selected', 400
-
-    if allowed_file(file.filename):
-        message_id = datetime.now().strftime("%Y%m%d%H%M%S%f")
-        filename = f"{message_id}_{user_id}.jpg"
-        file_path = os.path.join(app.config[UPLOAD_FOLDER], filename)
-        try:
-            file.save(file_path)
-            face_check_result = is_person_photo(file_path)
-            if face_check_result == True:
-                return render_template('upload_success.html', image_url=f"/{file_path}")
-            else:
-                os.remove(file_path)  # 刪除非人臉圖片
-                return render_template('upload_fail.html', message=f'內容不符: {face_check_result}')
-        except Exception as e:
-            return f'Error processing file: {e}', 500
-    else:
-        return 'File type not allowed', 400
- 
-
-# 重新鑑定
-@app.route('/recheck', methods=['GET'])
-def recheck():
-    return redirect(url_for('index'))
 
 # 圖片格式限制
 ALLOWED_EXTENSIONS = set(['pdf', 'png', 'jpg', 'jpeg', 'gif'])
