@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>色彩分析分享</title>
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <script>
+        const liffId = "{{ liff_id }}"; // 替換為你的 LIFF ID
+        
+        function getSeasonInfo(analysisResult) {
+            const seasonMap = {
+                "Spring Light": { color: "#eecfd2", name: "淨春型" },
+                "Summer Light": { color: "#e8aac3", name: "淺夏型" },
+                "Spring Bright": { color: "#d6223c", name: "淺春型" },
+                "Summer Mute": { color: "#f0cada", name: "冷夏型" },
+                "Autumn Deep": { color: "#9d1130", name: "暖秋型" },
+                "Autumn Mute": { color: "#e79e98", name: "柔秋型" },
+                "Winter Bright": { color: "#c23b71", name: "淨冬型" },
+                "Winter Dark": { color: "#7e4257", name: "深冬型" }
+            };
+
+            return seasonMap[analysisResult] || { color: "#ff9cc3", name: "未知類型" };
+        }
+        
+        document.addEventListener("DOMContentLoaded", function() {
+            liff.init({ liffId })
+                .then(() => {
+                    if (!liff.isLoggedIn()) {
+                        liff.login();
+                        return;
+                    }
+
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const analysisResult = urlParams.get("result") || "未知結果";
+                    const imgUrl = decodeURIComponent(decodeURIComponent(urlParams.get("img_url") || ""));
+                    const seasonInfo = getSeasonInfo(analysisResult);
+                    const analysisResultCh = seasonInfo.name;
+                    
+                    const resultTextElem = document.getElementById("result-text");
+
+                    // 設定文字，使用 \n 換行
+                    resultTextElem.innerHTML = `您的色彩季型為：<br><br>${analysisResultCh}<br>${analysisResult}`;
+                    
+                    // 存入 dataset 讓 shareResult() 使用
+                    resultTextElem.dataset.result = analysisResult;
+                    resultTextElem.dataset.resultCh = analysisResultCh;
+
+                    // 設定按鈕顏色
+                    document.getElementById("share-button").style.backgroundColor = seasonInfo.color;
+
+                    if (imgUrl) {
+                        document.getElementById("result-img").src = imgUrl;
+                    }
+                })
+                .catch(err => console.error("LIFF 初始化失敗", err));
+        });
+
+        function shareResult() {
+            if (!liff.isApiAvailable('shareTargetPicker')) {
+                alert("無法使用 LINE 分享功能，請手動複製連結！");
+                return;
+            }
+
+            const resultTextElem = document.getElementById("result-text");
+            const analysisResult = resultTextElem.dataset.result;  // 英文名稱
+            const analysisResultCh = resultTextElem.dataset.resultCh;  // 中文名稱
+            const imgUrl = document.getElementById("result-img").src;
+            const seasonInfo = getSeasonInfo(analysisResult);
+            const testLink = "https://line.me/R/ti/p/@973wluet";
+
+            const flexMessage = {
+                type: "flex",
+                altText: "來看看我的色彩分析結果！",
+                contents: {
+                    type: "bubble",
+                    hero: {
+                        type: "image",
+                        url: imgUrl,
+                        size: "full",
+                        aspectRatio: "20:13",
+                        backgroundColor: "#faf3f3",
+                        aspectMode: "cover"
+                    },
+                    body: {
+                        type: "box",
+                        layout: "vertical",
+                        backgroundColor: "#faf3f3",
+                        contents: [
+                            {
+                                type: "text",
+                                text: "我的色彩分析結果",
+                                weight: "bold",
+                                size: "xl",
+                                align: "center"
+                            },
+                            {
+                                type: "text",
+                                text: `🎨 我的色彩季型：\n${analysisResultCh}\n${analysisResult}`, // 換行顯示中文名稱
+                                size: "md",
+                                wrap: true,
+                                align: "center"
+                            }
+                        ]
+                    },
+                    footer: {
+                        type: "box",
+                        layout: "vertical",
+                        backgroundColor: "#faf3f3",
+                        contents: [
+                            {
+                                type: "button",
+                                style: "primary",
+                                action: {
+                                    type: "uri",
+                                    label: "一起來測試",
+                                    uri: testLink
+                                },
+                                color: seasonInfo.color
+                            }
+                        ]
+                    }
+                }
+            };
+
+            liff.shareTargetPicker([flexMessage])
+                .then(res => {
+                    if (res) {
+                        alert("分享成功！");
+                    } else {
+                        alert("分享取消");
+                    }
+                })
+                .catch(err => console.error("分享失敗", err));
+        }
+    </script>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Arial', sans-serif; background: linear-gradient(135deg, #ffdde1, #ee9ca7); display: flex; justify-content: center; align-items: center; height: 100vh;">
+    <div style="background: #faf3f3; padding: 20px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); text-align: center; max-width: 400px;">
+        <h2 style="color: #d6223c;">色彩分析結果</h2>
+        <p id="result-text" style="font-size: 18px; font-weight: bold; color: #333;">載入中...</p>
+        <img id="result-img" src="" alt="色彩分析結果" 
+             style="max-width: 100%; height: auto; border-radius: 10px; margin-bottom: 15px;" 
+             onerror="console.error('圖片載入失敗:', this.src); this.alt='圖片載入失敗！';">
+        <button id="share-button" onclick="shareResult()" 
+                style="background-color: #ff9cc3; color: white; padding: 12px 20px; border: none; border-radius: 5px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.3s;">
+            分享結果
+        </button>
+    </div>
+</body>
+
+</html>
